@@ -121,7 +121,7 @@ export const TimerConfigModal: React.FC<Props> = ({ section, onSave, onClose }) 
           </div>
           <div className="irow">
             <input type="number" min={0} max={600} value={section.restBetweenBlocks} onChange={e => set('restBetweenBlocks', Math.max(0, +e.target.value || 0))} style={{ width: 70 }} />
-            <label>sec entre blocs</label>
+            <label>{section.totalTours && section.totalTours > 1 ? 'sec entre tours' : 'sec après le bloc'}</label>
           </div>
         </div>
 

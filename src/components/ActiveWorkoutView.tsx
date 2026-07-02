@@ -17,7 +17,7 @@ export const ActiveWorkoutView: React.FC<Props> = ({ sections, onComplete, onAbo
   const [currentExIdx, setCurrentExIdx] = useState(0);
   const [running, setRunning] = useState(true);
   const [exerciseRemaining, setExerciseRemaining] = useState(0);
-  const [restKind, setRestKind] = useState<'exercise' | 'block'>('block');
+  const [restKind, setRestKind] = useState<'exercise' | 'tour' | 'block'>('block');
   const [sectionElapsed, setSectionElapsed] = useState(0);
   const [tabataCyclesDone, setTabataCyclesDone] = useState(0);
   const completedTimedExerciseRef = useRef('');
@@ -130,6 +130,7 @@ export const ActiveWorkoutView: React.FC<Props> = ({ sections, onComplete, onAbo
   const tabata = useTabata({
     workSec: sec?.workSec || 30,
     restSec: sec?.restSec || 10,
+    running,
     onPhaseDone: (phase) => {
       if (sec?.mode !== 'tabata') return;
       playBeep(phase === 'work' ? 1040 : 880, 180);
@@ -178,6 +179,9 @@ export const ActiveWorkoutView: React.FC<Props> = ({ sections, onComplete, onAbo
     if (curIdx < sections.length - 1) {
       if (restKind === 'exercise') {
         setCurrentExIdx(i => i + 1);
+      } else if (restKind === 'tour') {
+        setCurTour(i => i + 1);
+        setCurrentExIdx(0);
       } else {
         setCurIdx(i => i + 1);
         setCurTour(1);
@@ -249,8 +253,14 @@ export const ActiveWorkoutView: React.FC<Props> = ({ sections, onComplete, onAbo
     const n = curTour + 1;
     if (sec && sec.totalTours && n > sec.totalTours) advanceSection();
     else {
-      setCurTour(n);
-      setCurrentExIdx(0);
+      if (sec && sec.restBetweenBlocks > 0 && (sec.mode === 'fortime' || sec.mode === 'amrap' || sec.mode === 'emom')) {
+        setRestSecs(sec.restBetweenBlocks);
+        setRestKind('tour');
+        setShowRest(true);
+      } else {
+        setCurTour(n);
+        setCurrentExIdx(0);
+      }
     }
   };
 
@@ -389,7 +399,7 @@ export const ActiveWorkoutView: React.FC<Props> = ({ sections, onComplete, onAbo
     return (
       <div className="tdisp">
         <div className="tpl r" style={{ fontSize: '1rem' }}>
-          {isBlockRest ? 'Repos entre blocs' : 'Récupération inter-exercice'}
+          {isBlockRest ? 'Repos entre blocs' : restKind === 'tour' ? 'Récupération entre tours' : 'Récupération inter-exercice'}
         </div>
         <div className="tval r">{restTimer.remaining}</div>
         <div className="tsmt">{restSecs}s</div>

@@ -47,7 +47,7 @@ export const SectionRow: React.FC<Props> = ({ section, index, onExpand, onTimer,
       )}
       {section.restBetweenBlocks > 0 && (
         <span style={{ fontSize: '.688rem', color: '#ffa94d' }}>
-          {'⏱'} {(section.restBetweenBlocks / 60).toFixed(1)}min
+          {'⏱'} {fmt(section.restBetweenBlocks)}
         </span>
       )}
     </div>
@@ -62,6 +62,11 @@ export const SectionRow: React.FC<Props> = ({ section, index, onExpand, onTimer,
           )}
           {section.restBetweenExercises > 0 && (
             <div className="preview-meta">Repos exercices: {fmt(section.restBetweenExercises)}</div>
+          )}
+          {section.restBetweenBlocks > 0 && (
+            <div className="preview-meta">
+              {section.totalTours && section.totalTours > 1 ? 'Repos entre tours' : 'Repos après bloc'}: {fmt(section.restBetweenBlocks)}
+            </div>
           )}
           {section.exercises.map(ex => (
             <div key={ex.id} className="preview-ex">

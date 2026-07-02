@@ -38,10 +38,11 @@ export type TabataPhase = 'idle' | 'work' | 'rest';
 interface UseTabataProps {
   workSec: number;
   restSec: number;
+  running?: boolean;
   onPhaseDone?: (phase: Exclude<TabataPhase, 'idle'>) => void;
 }
 
-export function useTabata({ workSec, restSec, onPhaseDone }: UseTabataProps) {
+export function useTabata({ workSec, restSec, running = true, onPhaseDone }: UseTabataProps) {
   const [phase, setPhase] = useState<TabataPhase>('idle');
   const [timeLeft, setTimeLeft] = useState(0);
   const ref = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -53,11 +54,15 @@ export function useTabata({ workSec, restSec, onPhaseDone }: UseTabataProps) {
 
   useEffect(() => () => { clearInterval(Number(ref.current)); }, [])
 
-  // Update timer when phase changes
   useEffect(() => {
     if (phase === 'idle') return;
     const dur = phase === 'work' ? workSec : restSec;
     setTimeLeft(dur);
+  }, [phase, workSec, restSec]);
+
+  // Update timer while the workout is running.
+  useEffect(() => {
+    if (phase === 'idle' || !running) return;
     ref.current = setInterval(() => {
       setTimeLeft(p => {
         if (p <= 1) {
@@ -71,7 +76,7 @@ export function useTabata({ workSec, restSec, onPhaseDone }: UseTabataProps) {
       });
     }, 1000);
     return () => { if (ref.current) clearInterval(Number(ref.current)); };
-  }, [phase, workSec, restSec]);
+  }, [phase, running]);
 
   const start = useCallback(() => setPhase('work'), []);
   const pause = useCallback(() => { if (ref.current !== null) clearInterval(Number(ref.current)); setPhase('idle'); }, []);
@@ -101,18 +106,28 @@ interface UseRestTimerProps {
 export function useRestTimer({ secs, onDone }: UseRestTimerProps) {
   const [remaining, setRemaining] = useState(0);
   const ref = useRef<ReturnType<typeof setInterval> | null>(null);
+  const previousRemainingRef = useRef(0);
 
   useEffect(() => {
-    if (secs == null || secs <= 0) return;
+    previousRemainingRef.current = 0;
+    if (secs == null || secs <= 0) {
+      setRemaining(0);
+      return;
+    }
     setRemaining(secs);
     ref.current = setInterval(() => setRemaining(p => p <= 1 ? 0 : p - 1), 1000);
     return () => { if (ref.current) clearInterval(Number(ref.current)); };
   }, [secs]);
 
   useEffect(() => {
-    if (remaining === 0 && secs != null && secs > 0) onDone();
+    if (remaining === 0 && secs != null && secs > 0 && previousRemainingRef.current > 0) {
+      previousRemainingRef.current = 0;
+      onDone();
+      return;
+    }
+    previousRemainingRef.current = remaining;
   }, [remaining, secs, onDone]);
 
-  const skip = useCallback(() => { if (ref.current) clearInterval(Number(ref.current)); setRemaining(0); }, []);
+  const skip = useCallback(() => { if (ref.current) clearInterval(Number(ref.current)); previousRemainingRef.current = 1; setRemaining(0); }, []);
   return { remaining, active: secs != null && secs > 0, skip };
 }
