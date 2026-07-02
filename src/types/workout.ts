@@ -226,6 +226,7 @@ export function uid(): string {
 }
 
 let audioCtx: AudioContext | null = null;
+let bellAudio: HTMLAudioElement | null = null;
 
 function getAudioContext(): AudioContext {
   if (!audioCtx) {
@@ -251,41 +252,36 @@ export async function unlockAudio(): Promise<void> {
   } catch {
     /* no audio */
   }
+
+  try {
+    const audio = getBellAudio();
+    audio.muted = true;
+    audio.currentTime = 0;
+    await audio.play();
+    audio.pause();
+    audio.currentTime = 0;
+    audio.muted = false;
+  } catch {
+    if (bellAudio) bellAudio.muted = false;
+  }
 }
 
-export function playBeep(freq = 880, dur = 150): void {
+function getBellAudio(): HTMLAudioElement {
+  if (!bellAudio) {
+    bellAudio = new Audio("/sounds/bell.mp3");
+    bellAudio.preload = "auto";
+    bellAudio.volume = 1;
+    bellAudio.load();
+  }
+  return bellAudio;
+}
+
+export function playBeep(_freq = 880, _dur = 150): void {
   try {
-    const ctx = getAudioContext();
-    if (ctx.state === "suspended") void ctx.resume();
-
-    const now = ctx.currentTime;
-    const length = Math.max(dur / 1000, 0.72);
-    const master = ctx.createGain();
-    const partials = [
-      { ratio: 1, gain: 0.42, decay: length },
-      { ratio: 2.01, gain: 0.2, decay: length * 0.62 },
-      { ratio: 2.96, gain: 0.13, decay: length * 0.42 },
-      { ratio: 4.14, gain: 0.08, decay: length * 0.28 },
-    ];
-
-    master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.95, now + 0.012);
-    master.gain.exponentialRampToValueAtTime(0.0001, now + length);
-    master.connect(ctx.destination);
-
-    partials.forEach(({ ratio, gain, decay }) => {
-      const osc = ctx.createOscillator();
-      const partialGain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq * ratio, now);
-      partialGain.gain.setValueAtTime(gain, now);
-      partialGain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
-      osc.connect(partialGain);
-      partialGain.connect(master);
-      osc.start(now);
-      osc.stop(now + length + 0.05);
-    });
-
+    const audio = getBellAudio();
+    audio.muted = false;
+    audio.currentTime = 0;
+    void audio.play();
     if ("vibrate" in navigator) navigator.vibrate(120);
   } catch {
     /* no audio */
