@@ -134,7 +134,7 @@ export const ActiveWorkoutView: React.FC<Props> = ({ sections, onComplete, onAbo
     onPhaseDone: (phase) => {
       if (sec?.mode !== 'tabata') return;
       playBeep(phase === 'work' ? 1040 : 880, 180);
-      if (phase === 'rest') completeTabataCycle();
+      if (phase === 'rest') completeTabataCycle({ finishWhenLimitReached: true });
     },
   });
   const emom = useEMOM(sec?.emomSec || 60);
@@ -214,7 +214,11 @@ export const ActiveWorkoutView: React.FC<Props> = ({ sections, onComplete, onAbo
   function nextExercise(options: { skipExerciseRest?: boolean } = {}) {
     if (!sec) return;
     if (sec.mode === 'tabata') {
-      setCurrentExIdx(i => i < sec.exercises.length - 1 ? i + 1 : 0);
+      if (currentExIdx < sec.exercises.length - 1) {
+        advanceTabataExercise();
+      } else {
+        completeTabataCycle({ finishWhenLimitReached: true });
+      }
       return;
     }
     if (currentExIdx < sec.exercises.length - 1) {
@@ -230,11 +234,19 @@ export const ActiveWorkoutView: React.FC<Props> = ({ sections, onComplete, onAbo
     }
   }
 
-  function completeTabataCycle() {
+  function advanceTabataExercise() {
+    if (!sec) return;
+    setCurrentExIdx(i => i < sec.exercises.length - 1 ? i + 1 : 0);
+    tabata.skipToWork();
+  }
+
+  function completeTabataCycle(options: { finishWhenLimitReached: boolean }) {
     if (!sec) return;
     const nextCycleCount = tabataCyclesDone + 1;
     const durationReached = sec.fortimeDuration > 0 && sectionElapsed >= sec.fortimeDuration;
-    const tourLimitReached = sec.fortimeDuration <= 0 && !!sec.totalTours && nextCycleCount >= sec.totalTours;
+    const tourLimitReached = sec.fortimeDuration <= 0 && !!sec.totalTours && (
+      options.finishWhenLimitReached ? nextCycleCount >= sec.totalTours : tabataCyclesDone >= sec.totalTours
+    );
 
     setTabataCyclesDone(nextCycleCount);
     setToursDone(p => ({ ...p, [curIdx]: nextCycleCount }));
@@ -245,7 +257,7 @@ export const ActiveWorkoutView: React.FC<Props> = ({ sections, onComplete, onAbo
     }
 
     setCurTour(nextCycleCount + 1);
-    nextExercise({ skipExerciseRest: true });
+    advanceTabataExercise();
   }
 
   const nextTour = () => {

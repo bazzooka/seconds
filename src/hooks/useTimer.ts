@@ -45,6 +45,7 @@ interface UseTabataProps {
 export function useTabata({ workSec, restSec, running = true, onPhaseDone }: UseTabataProps) {
   const [phase, setPhase] = useState<TabataPhase>('idle');
   const [timeLeft, setTimeLeft] = useState(0);
+  const [restartKey, setRestartKey] = useState(0);
   const ref = useRef<ReturnType<typeof setInterval> | null>(null);
   const onPhaseDoneRef = useRef(onPhaseDone);
 
@@ -76,12 +77,27 @@ export function useTabata({ workSec, restSec, running = true, onPhaseDone }: Use
       });
     }, 1000);
     return () => { if (ref.current) clearInterval(Number(ref.current)); };
-  }, [phase, running]);
+  }, [phase, running, restartKey]);
 
-  const start = useCallback(() => setPhase('work'), []);
+  const start = useCallback(() => {
+    if (ref.current) clearInterval(Number(ref.current));
+    setTimeLeft(workSec);
+    setPhase('work');
+    setRestartKey(k => k + 1);
+  }, [workSec]);
   const pause = useCallback(() => { if (ref.current !== null) clearInterval(Number(ref.current)); setPhase('idle'); }, []);
-  const skipToWork = useCallback(() => { if (ref.current) clearInterval(Number(ref.current)); setPhase('work'); }, []);
-  const skipToRest = useCallback(() => { if (ref.current) clearInterval(Number(ref.current)); setPhase('rest'); }, []);
+  const skipToWork = useCallback(() => {
+    if (ref.current) clearInterval(Number(ref.current));
+    setTimeLeft(workSec);
+    setPhase('work');
+    setRestartKey(k => k + 1);
+  }, [workSec]);
+  const skipToRest = useCallback(() => {
+    if (ref.current) clearInterval(Number(ref.current));
+    setTimeLeft(restSec);
+    setPhase('rest');
+    setRestartKey(k => k + 1);
+  }, [restSec]);
 
   return { phase, timeLeft, start, pause, skipToWork, skipToRest, isRunning: ref.current !== null };
 }
